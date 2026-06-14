@@ -477,13 +477,6 @@ def run_test(args):
                 cnn_accy, nme_accy, y_pred, y_true_eval = model.eval_task()
                 m = cnn_accy
                 
-                # Chỉ vẽ Confusion Matrix cho Task cuối cùng (checkpoint cuối cùng)
-                if _cp == ckpt_files[-1]:
-                    plot_confusion_matrix(y_true_eval, y_pred, task, args.get('run_dir', '.'))
-                logging.info(
-                    f'[TEST] {os.path.basename(_cp)} | Task {task} | '
-                    f"Acc: {m['top1']:.2f}% | F1-Mac: {m.get('f1_macro',0):.2f}% | F1-Mic: {m.get('f1_micro',0):.2f}%"
-                )
                 writer.writerow([
                     os.path.basename(_cp), task, known_cls,
                     round(m['top1'], 4),
@@ -499,6 +492,18 @@ def run_test(args):
                     round(m.get('loss', 0), 6),
                 ])
                 fcsv.flush()
+                
+                logging.info(
+                    f'[TEST] {os.path.basename(_cp)} | Task {task} | '
+                    f"Acc: {m['top1']:.2f}% | F1-Mac: {m.get('f1_macro',0):.2f}% | F1-Mic: {m.get('f1_micro',0):.2f}%"
+                )
+
+                # Chỉ vẽ Confusion Matrix cho Task cuối cùng (checkpoint cuối cùng)
+                if _cp == ckpt_files[-1]:
+                    try:
+                        plot_confusion_matrix(y_true_eval, y_pred, task, args.get('run_dir', '.'))
+                    except Exception as e:
+                        logging.error(f"[TEST] Error plotting confusion matrix: {e}")
                 
             except Exception as e:
                 logging.error(f"[TEST] Error evaluating checkpoint {os.path.basename(_cp)}: {e}")

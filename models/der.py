@@ -10,6 +10,8 @@ from torch.utils.data import DataLoader
 from models.base import BaseLearner
 from utils.inc_net import DERNet
 from utils.toolkit import count_parameters, target2onehot, tensor2numpy
+from losses.adasp_loss import AdaSPLoss
+from losses.ms_loss import MultiSimilarityLoss
 
 EPS = 1e-8
 
@@ -127,7 +129,24 @@ class DER(BaseLearner):
                     targets - self._known_classes,
                 )
                 aux_loss = F.cross_entropy(aux_logits, aux_targets)
-                loss = loss + aux_loss
+                loss_ce = loss + aux_loss
+
+                # --- SPCIL: Tính thêm L_SP và L_RS ---
+                features = output["features"]
+                lambda_a = self.args.get("lambda_a", 0.01)
+                lambda_b = self.args.get("lambda_b", 0.01)
+                
+                # L_SP: Structure Preservation Loss (AdaSP)
+                adasp_loss_fn = AdaSPLoss(N_id=self._total_classes, device=self._device)
+                loss_sp = adasp_loss_fn(features, targets)
+                
+                # L_RS: Representation Similarity Loss (Multi-Similarity)
+                ms_loss_fn = MultiSimilarityLoss(scale_pos=2.0, scale_neg=40.0)
+                loss_rs = ms_loss_fn(features, targets)
+                
+                # Tổng hợp Loss
+                loss = loss_ce + lambda_a * loss_sp + lambda_b * loss_rs
+                # -------------------------------------
 
                 optimizer.zero_grad()
                 loss.backward()
