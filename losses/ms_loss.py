@@ -26,8 +26,11 @@ class MultiSimilarityLoss(nn.Module):
             pos_pair_ = pos_pair_[pos_pair_ < 1 - epsilon]
             neg_pair_ = sim_mat[i][labels != labels[i]]
 
-            neg_pair = neg_pair_[neg_pair_ + self.margin > min(pos_pair_)]
-            pos_pair = pos_pair_[pos_pair_ - self.margin < max(neg_pair_)]
+            if len(pos_pair_) < 1 or len(neg_pair_) < 1:
+                continue
+
+            neg_pair = neg_pair_[neg_pair_ + self.margin > torch.min(pos_pair_)]
+            pos_pair = pos_pair_[pos_pair_ - self.margin < torch.max(neg_pair_)]
 
             if len(neg_pair) < 1 or len(pos_pair) < 1:
                 continue
