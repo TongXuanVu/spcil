@@ -12,9 +12,18 @@ import os
 
 
 # --- Đường dẫn tới data ---
-_SPCIL_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # c:\FederatedLearning\SPCIL
-_FL_ROOT = os.path.join(os.path.dirname(_SPCIL_ROOT), "FL")               # c:\FederatedLearning\FL
-_DATA_DIR = os.path.join(_FL_ROOT, "core", "data_split")
+if os.path.exists("/kaggle/input/datasets/tongxuanvu/dataset-fl/data"):
+    # Kaggle Environment
+    _DATA_DIR = "/kaggle/input/datasets/tongxuanvu/dataset-fl/data"
+elif os.path.exists("/kaggle/input"):
+    # Fallback for Kaggle if the path is slightly different
+    _DATA_DIR = "/kaggle/input/tongxuanvu/dataset-fl/data"
+else:
+    # Local Environment
+    _SPCIL_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # c:\FederatedLearning\SPCIL
+    _FL_ROOT = os.path.join(os.path.dirname(_SPCIL_ROOT), "FL")               # c:\FederatedLearning\FL
+    _DATA_DIR = os.path.join(_FL_ROOT, "core", "data_split")
+
 _CENTRALIZED_DIR = os.path.join(_DATA_DIR, "centralized_data")
 _TEST_FILE = os.path.join(_DATA_DIR, "global_test_data.pt")
 _NUM_TASKS = 6
