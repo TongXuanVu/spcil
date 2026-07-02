@@ -26,6 +26,10 @@ class BaseLearner(object):
         self._memory_size = args.get("memory_size", 5000)
         self._memory_per_class = args.get("memory_per_class", None)
         self._fixed_memory = args.get("fixed_memory", False)
+        # Che do replay theo ty le phan tram tren tung lop (proportional).
+        # Vi du memory_percent = 0.01 => moi lop giu lai 1% so mau cua chinh no.
+        self._memory_percent = args.get("memory_percent", None)
+        self._class_sample_counts = {}
         self._device = args["device"][0]
         self._multiple_gpus = args["device"]
 
@@ -57,6 +61,29 @@ class BaseLearner(object):
         else:
             self._reduce_exemplar(data_manager, per_class)
             self._construct_exemplar(data_manager, per_class)
+
+    def _num_samples_for_class(self, data_manager, class_idx):
+        """So mau train cua mot lop (cache lai de tranh load lai nhieu lan)."""
+        if class_idx not in self._class_sample_counts:
+            data, _, _ = data_manager.get_dataset(
+                np.arange(class_idx, class_idx + 1),
+                source="train",
+                mode="test",
+                ret_data=True,
+            )
+            self._class_sample_counts[class_idx] = len(data)
+        return self._class_sample_counts[class_idx]
+
+    def _m_for_class(self, data_manager, class_idx, default_m):
+        """
+        Tra ve so mau replay cho mot lop.
+        - Neu bat che do memory_percent: giu lai round(percent * so_mau_cua_lop), toi thieu 1.
+        - Nguoc lai: dung default_m (co che cu).
+        """
+        if self._memory_percent is not None:
+            n = self._num_samples_for_class(data_manager, class_idx)
+            return max(1, int(round(n * self._memory_percent)))
+        return default_m
 
     def save_checkpoint(self, filename):
         self._network.cpu()
@@ -206,8 +233,9 @@ class BaseLearner(object):
         self._data_memory, self._targets_memory = np.array([]), np.array([])
 
         for class_idx in range(self._known_classes):
+            m_c = self._m_for_class(data_manager, class_idx, m)
             mask = np.where(dummy_targets == class_idx)[0]
-            dd, dt = dummy_data[mask][:m], dummy_targets[mask][:m]
+            dd, dt = dummy_data[mask][:m_c], dummy_targets[mask][:m_c]
             self._data_memory = (
                 np.concatenate((self._data_memory, dd))
                 if len(self._data_memory) != 0
@@ -243,7 +271,13 @@ class BaseLearner(object):
                 ret_data=True,
             )
             num_samples = len(data)
-            selected_m = min(m, num_samples)
+            # Cache so mau cua lop de _reduce_exemplar dung lai o cac task sau.
+            self._class_sample_counts[class_idx] = num_samples
+            if self._memory_percent is not None:
+                m_c = max(1, int(round(num_samples * self._memory_percent)))
+            else:
+                m_c = m
+            selected_m = min(m_c, num_samples)
             idx_loader = DataLoader(
                 idx_dataset, batch_size=batch_size, shuffle=False, num_workers=0
             )
@@ -346,7 +380,13 @@ class BaseLearner(object):
                 ret_data=True,
             )
             num_samples = len(data)
-            selected_m = min(m, num_samples)
+            # Cache so mau cua lop de _reduce_exemplar dung lai o cac task sau.
+            self._class_sample_counts[class_idx] = num_samples
+            if self._memory_percent is not None:
+                m_c = max(1, int(round(num_samples * self._memory_percent)))
+            else:
+                m_c = m
+            selected_m = min(m_c, num_samples)
             class_loader = DataLoader(
                 class_dset, batch_size=batch_size, shuffle=False, num_workers=0
             )

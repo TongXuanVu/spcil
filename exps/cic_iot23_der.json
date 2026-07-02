@@ -4,6 +4,7 @@
     "memory_size": 5000,
     "memory_per_class": 20,
     "fixed_memory": false,
+    "memory_percent": 0.01,
     "shuffle": false,
     "init_cls": 6,
     "increment": 6,
