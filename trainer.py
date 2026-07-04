@@ -195,7 +195,7 @@ def _train(args):
         # If it's the start_task, it will use the start_round passed in args.
         model.incremental_train(data_manager)
 
-        cnn_accy, nme_accy = model.eval_task()
+        cnn_accy, nme_accy, _, _ = model.eval_task()
         model.after_task()
 
         # ── Luu checkpoint sau moi task ────────────────────────────────────────
