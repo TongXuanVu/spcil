@@ -45,15 +45,23 @@ class DER(BaseLearner):
                 for p in self._network.convnets[i].parameters():
                     p.requires_grad = False
 
+        # DataLoader tuning (1.2): nap du lieu song song, khong doi ket qua.
+        # Thu tu lay mau do seed quyet dinh, khong phu thuoc so worker.
+        num_workers = self.args.get("num_workers", 4)
+        loader_kwargs = {"num_workers": num_workers, "pin_memory": True}
+        if num_workers > 0:
+            loader_kwargs["persistent_workers"] = True
+            loader_kwargs["prefetch_factor"] = self.args.get("prefetch_factor", 4)
+
         # Setup Test Loader (Always needed for evaluation)
         test_dataset = data_manager.get_dataset(
             np.arange(0, self._total_classes), source="test", mode="test"
         )
         self.test_loader = DataLoader(
-            test_dataset, 
-            batch_size=self.args["batch_size"], 
-            shuffle=False, 
-            num_workers=self.args.get("num_workers", 0)
+            test_dataset,
+            batch_size=self.args["batch_size"],
+            shuffle=False,
+            **loader_kwargs,
         )
 
         if skip_train:
@@ -78,10 +86,10 @@ class DER(BaseLearner):
             appendent=self._get_memory(),
         )
         self.train_loader = DataLoader(
-            train_dataset, 
-            batch_size=self.args["batch_size"], 
-            shuffle=True, 
-            num_workers=self.args.get("num_workers", 0)
+            train_dataset,
+            batch_size=self.args["batch_size"],
+            shuffle=True,
+            **loader_kwargs,
         )
 
         if len(self._multiple_gpus) > 1:
@@ -109,6 +117,10 @@ class DER(BaseLearner):
 
     def _init_train(self, train_loader, test_loader, optimizer, scheduler):
         start_round = self.args.get("start_round", 0)
+        # (2.4) Khoi tao loss mot lan cho ca task, thay vi moi iteration.
+        # Ca hai chi phu thuoc self._total_classes (co dinh trong 1 task) va hang so.
+        adasp_loss_fn = AdaSPLoss(N_id=self._total_classes, device=self._device)
+        ms_loss_fn = MultiSimilarityLoss(scale_pos=2.0, scale_neg=40.0)
         prog_bar = tqdm(range(start_round, self.args.get("epochs", 30)))
         for _, epoch in enumerate(prog_bar):
             self._network.train()
@@ -136,12 +148,10 @@ class DER(BaseLearner):
                 lambda_a = self.args.get("lambda_a", 0.01)
                 lambda_b = self.args.get("lambda_b", 0.01)
                 
-                # L_SP: Structure Preservation Loss (AdaSP)
-                adasp_loss_fn = AdaSPLoss(N_id=self._total_classes, device=self._device)
+                # L_SP: Structure Preservation Loss (AdaSP) — dung lai instance da tao o tren
                 loss_sp = adasp_loss_fn(features, targets)
-                
-                # L_RS: Representation Similarity Loss (Multi-Similarity)
-                ms_loss_fn = MultiSimilarityLoss(scale_pos=2.0, scale_neg=40.0)
+
+                # L_RS: Representation Similarity Loss (Multi-Similarity) — dung lai instance da tao o tren
                 loss_rs = ms_loss_fn(features, targets)
                 
                 # Tổng hợp Loss
