@@ -291,6 +291,9 @@ def _train(args):
         logging.info("Average Accuracy (CNN): {}".format(avg_cnn))
         if nme_accy is not None:
             logging.info("Average Accuracy (NME): {}\n".format(avg_nme))
+            
+        csv_file.flush()
+        os.fsync(csv_file.fileno())
 
     csv_file.close()
     logging.info("Metrics CSV saved: {}".format(csv_path))
