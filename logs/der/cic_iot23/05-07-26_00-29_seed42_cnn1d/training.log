@@ -1,0 +1,65 @@
+2026-07-05 00:29:09,925 [trainer.py] => prefix: cic_iot23
+2026-07-05 00:29:09,925 [trainer.py] => dataset: cic_iot23
+2026-07-05 00:29:09,925 [trainer.py] => memory_size: 5000
+2026-07-05 00:29:09,925 [trainer.py] => memory_per_class: 20
+2026-07-05 00:29:09,925 [trainer.py] => fixed_memory: False
+2026-07-05 00:29:09,925 [trainer.py] => memory_percent: 0.01
+2026-07-05 00:29:09,925 [trainer.py] => shuffle: False
+2026-07-05 00:29:09,925 [trainer.py] => init_cls: 6
+2026-07-05 00:29:09,925 [trainer.py] => increment: 6
+2026-07-05 00:29:09,925 [trainer.py] => model_name: der
+2026-07-05 00:29:09,925 [trainer.py] => convnet_type: cnn1d
+2026-07-05 00:29:09,926 [trainer.py] => device: [device(type='cuda', index=0)]
+2026-07-05 00:29:09,926 [trainer.py] => seed: 42
+2026-07-05 00:29:09,926 [trainer.py] => init_epoch: 30
+2026-07-05 00:29:09,926 [trainer.py] => epochs: 30
+2026-07-05 00:29:09,926 [trainer.py] => batch_size: 512
+2026-07-05 00:29:09,926 [trainer.py] => config: ./exps/cic_iot23_der.json
+2026-07-05 00:29:09,926 [trainer.py] => mode: train
+2026-07-05 00:29:09,926 [trainer.py] => test_checkpoint_dir: 
+2026-07-05 00:29:09,926 [trainer.py] => debug: False
+2026-07-05 00:29:09,926 [trainer.py] => resume: 
+2026-07-05 00:29:09,926 [trainer.py] => Run directory: logs/der/cic_iot23/05-07-26_00-29_seed42_cnn1d
+2026-07-05 00:29:51,682 [data_manager.py] => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]
+2026-07-05 00:30:32,511 [trainer.py] => All params: 0
+2026-07-05 00:30:32,511 [trainer.py] => Trainable params: 0
+2026-07-05 00:30:33,060 [der.py] => Learning on 0-6
+2026-07-05 01:52:40,402 [der.py] => Task 0, Epoch 30/30 => Loss 0.020, Train_accy 99.89, Test_accy 99.89
+2026-07-05 01:52:40,403 [base.py] => Reducing exemplars...(833 per classes)
+2026-07-05 01:52:40,403 [base.py] => Constructing exemplars...(833 per classes)
+2026-07-05 02:46:25,658 [der.py] => Exemplar size: 58497
+2026-07-05 02:46:25,661 [trainer.py] => [CKPT] Saved: ckpt_task00_acc99.9.pth
+2026-07-05 02:46:25,662 [trainer.py] => CNN: {'total': np.float64(99.89), 'fpr': np.float64(0.03), 'precision_micro': np.float64(99.89), 'precision_macro': np.float64(74.37), 'precision_weighted': np.float64(99.86), 'recall_micro': np.float64(99.89), 'recall_macro': np.float64(67.77), 'recall_weighted': np.float64(99.89), 'f1_micro': np.float64(99.89), 'f1_macro': np.float64(68.83), 'f1_weighted': np.float64(99.87), 'acc_00-09': np.float64(99.89), 'old_acc': 0, 'new_acc': np.float64(99.89)}
+2026-07-05 02:46:25,662 [trainer.py] => NME: {'total': np.float64(99.12), 'fpr': np.float64(5.87), 'precision_micro': np.float64(99.12), 'precision_macro': np.float64(64.61), 'precision_weighted': np.float64(99.86), 'recall_micro': np.float64(99.12), 'recall_macro': np.float64(79.02), 'recall_weighted': np.float64(99.12), 'f1_micro': np.float64(99.12), 'f1_macro': np.float64(66.48), 'f1_weighted': np.float64(99.47), 'acc_00-09': np.float64(99.12), 'old_acc': 0, 'new_acc': np.float64(99.12)}
+2026-07-05 02:46:25,662 [trainer.py] => CNN top1 curve: [np.float64(99.89)]
+2026-07-05 02:46:25,662 [trainer.py] => CNN top5 curve: [np.float64(100.0)]
+2026-07-05 02:46:25,662 [trainer.py] => NME top1 curve: [np.float64(99.12)]
+2026-07-05 02:46:25,662 [trainer.py] => NME top5 curve: [np.float64(100.0)]
+
+2026-07-05 02:46:25,662 [trainer.py] => Average Accuracy (CNN): 99.89
+2026-07-05 02:46:25,662 [trainer.py] => Average Accuracy (NME): 99.12
+
+2026-07-05 02:46:25,663 [trainer.py] => All params: 23021
+2026-07-05 02:46:25,663 [trainer.py] => Trainable params: 23021
+2026-07-05 02:46:25,667 [der.py] => Learning on 6-12
+2026-07-05 04:23:51,239 [der.py] => Task 1, Epoch 30/30 => Loss 0.018, Train_accy 99.79, Test_accy 97.48
+2026-07-05 04:23:51,240 [base.py] => Reducing exemplars...(416 per classes)
+2026-07-05 04:23:53,355 [base.py] => Constructing exemplars...(416 per classes)
+2026-07-05 05:35:47,753 [der.py] => Exemplar size: 115262
+2026-07-05 05:35:47,759 [trainer.py] => [CKPT] Saved: ckpt_task01_acc97.5.pth
+2026-07-05 05:35:47,759 [trainer.py] => CNN: {'total': np.float64(97.48), 'fpr': np.float64(33.61), 'precision_micro': np.float64(97.48), 'precision_macro': np.float64(53.11), 'precision_weighted': np.float64(99.62), 'recall_micro': np.float64(97.48), 'recall_macro': np.float64(55.02), 'recall_weighted': np.float64(97.48), 'f1_micro': np.float64(97.48), 'f1_macro': np.float64(48.4), 'f1_weighted': np.float64(98.27), 'acc_00-09': np.float64(97.5), 'acc_10-19': np.float64(38.59), 'old_acc': np.float64(95.2), 'new_acc': np.float64(99.82)}
+2026-07-05 05:35:47,760 [trainer.py] => NME: {'total': np.float64(97.19), 'fpr': np.float64(37.56), 'precision_micro': np.float64(97.19), 'precision_macro': np.float64(47.23), 'precision_weighted': np.float64(99.65), 'recall_micro': np.float64(97.19), 'recall_macro': np.float64(59.02), 'recall_weighted': np.float64(97.19), 'f1_micro': np.float64(97.19), 'f1_macro': np.float64(47.22), 'f1_weighted': np.float64(98.11), 'acc_00-09': np.float64(97.22), 'acc_10-19': np.float64(42.81), 'old_acc': np.float64(94.78), 'new_acc': np.float64(99.68)}
+2026-07-05 05:35:47,760 [trainer.py] => CNN top1 curve: [np.float64(99.89), np.float64(97.48)]
+2026-07-05 05:35:47,760 [trainer.py] => CNN top5 curve: [np.float64(100.0), np.float64(99.9)]
+2026-07-05 05:35:47,760 [trainer.py] => NME top1 curve: [np.float64(99.12), np.float64(97.19)]
+2026-07-05 05:35:47,760 [trainer.py] => NME top5 curve: [np.float64(100.0), np.float64(98.75)]
+
+2026-07-05 05:35:47,760 [trainer.py] => Average Accuracy (CNN): 98.685
+2026-07-05 05:35:47,761 [trainer.py] => Average Accuracy (NME): 98.155
+
+2026-07-05 05:35:47,761 [trainer.py] => All params: 46355
+2026-07-05 05:35:47,761 [trainer.py] => Trainable params: 24179
+2026-07-05 05:35:47,766 [der.py] => Learning on 12-18
+2026-07-05 07:39:03,422 [der.py] => Task 2, Epoch 30/30 => Loss 0.064, Train_accy 99.63, Test_accy 87.71
+2026-07-05 07:39:03,423 [base.py] => Reducing exemplars...(277 per classes)
+2026-07-05 07:39:08,673 [base.py] => Constructing exemplars...(277 per classes)
