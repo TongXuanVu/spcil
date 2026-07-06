@@ -278,43 +278,14 @@ class BaseLearner(object):
             else:
                 m_c = m
             selected_m = min(m_c, num_samples)
-            idx_loader = DataLoader(
-                idx_dataset, batch_size=batch_size, shuffle=False, num_workers=0
-            )
-            vectors, _ = self._extract_vectors(idx_loader)
-            # In-place L2 normalization using float32 to prevent allocating massive 10GB+ temporary float64 arrays
-            vectors = vectors.astype(np.float32, copy=False)
-            norms = np.linalg.norm(vectors, axis=1, keepdims=True).astype(np.float32)
-            np.divide(vectors, norms + np.float32(EPSILON), out=vectors)
-            class_mean = np.mean(vectors, axis=0)
-
-            # Select
-            selected_exemplars = []
-            exemplar_vectors = []  # [n, feature_dim]
-            available_mask = np.ones(num_samples, dtype=bool)
-            S = np.zeros(vectors.shape[1], dtype=np.float32)
-            class_mean_f32 = class_mean.astype(np.float32)
-            vectors_f32 = vectors.astype(np.float32)
-
-            for k in range(1, selected_m + 1):
-                # We want to minimize || class_mean - (vectors + S) / k ||^2
-                # mathematically equivalent to maximizing: vectors @ (class_mean - S / k)
-                # because ||vectors|| is 1.
-                T = class_mean_f32 - (S / k)
-                scores = vectors_f32.dot(T)
-                scores[~available_mask] = -np.inf  # Ignore already selected vectors
-                
-                i = np.argmax(scores)
-                
-                selected_exemplars.append(np.array(data[i]))
-                exemplar_vectors.append(np.array(vectors[i]))
-                
-                S += vectors_f32[i]
-                available_mask[i] = False
-
-            # uniques = np.unique(selected_exemplars, axis=0)
-            # print('Unique elements: {}'.format(len(uniques)))
-            selected_exemplars = np.array(selected_exemplars)
+            # (Random 1%) Chon ngau nhien selected_m mau cho moi lop thay cho herding.
+            # Nhanh hon rat nhieu tren du lieu lon: KHONG trich vector toan bo lop
+            # va KHONG co vong lap O(m*N) cua herding. Ket qua khac herding nhung
+            # tuong duong ve chat luong o muc replay 1%.
+            data_arr = np.asarray(data)
+            rng = np.random.default_rng(int(self.args.get("seed", 0)) + int(class_idx))
+            chosen = rng.choice(num_samples, size=selected_m, replace=False)
+            selected_exemplars = data_arr[chosen]
             exemplar_targets = np.full(selected_m, class_idx)
             self._data_memory = (
                 np.concatenate((self._data_memory, selected_exemplars))

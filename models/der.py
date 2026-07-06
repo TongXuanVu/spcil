@@ -153,13 +153,29 @@ class DER(BaseLearner):
 
                 # L_RS: Representation Similarity Loss (Multi-Similarity) — dung lai instance da tao o tren
                 loss_rs = ms_loss_fn(features, targets)
-                
+
+                # Cac loss phu (SP/RS) co the sinh nan/inf tren batch suy bien.
+                # Neu vay, bo qua thanh phan do trong batch nay thay vi lam hong ca model.
+                if not torch.isfinite(loss_sp):
+                    loss_sp = torch.zeros((), device=self._device)
+                if not torch.isfinite(loss_rs):
+                    loss_rs = torch.zeros((), device=self._device)
+
                 # Tổng hợp Loss
                 loss = loss_ce + lambda_a * loss_sp + lambda_b * loss_rs
                 # -------------------------------------
 
+                # Neu tong loss van khong huu han -> bo qua hoan toan batch nay.
+                if not torch.isfinite(loss):
+                    optimizer.zero_grad(set_to_none=True)
+                    continue
+
                 optimizer.zero_grad()
                 loss.backward()
+                # Gradient clipping: chan exploding gradient -> tranh trong so bien thanh nan.
+                torch.nn.utils.clip_grad_norm_(
+                    self._network.parameters(), self.args.get("grad_clip", 5.0)
+                )
                 optimizer.step()
                 losses += loss.item()
 

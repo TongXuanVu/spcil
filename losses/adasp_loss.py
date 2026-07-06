@@ -17,6 +17,9 @@ class AdaSPLoss(object):
         self.N_id = N_id
 
     def __call__(self, feats, targets):
+        # Lam sach input: neu feats co nan/inf (exploding) -> thay bang 0 truoc khi chuan hoa.
+        # Chi tac dong len gia tri khong huu han; gia tri hop le giu nguyen.
+        feats = torch.nan_to_num(feats, nan=0.0, posinf=0.0, neginf=0.0)
         # 归一化输入特征
         feats_n = nn.functional.normalize(feats, dim=1)
         scale = 1. / self.temp
@@ -35,7 +38,9 @@ class AdaSPLoss(object):
         mask_H = 1.0 - 2.0 * pos_mask
 
         # ID_sim_HH calculation
-        exp_sim_H = torch.exp(sf_sim_qq * mask_H)
+        # Clamp so mu truoc exp de chan tran so (inf). Voi feature da chuan hoa,
+        # gia tri that nam trong [-scale, scale] nen clamp o 30 khong doi ket qua binh thuong.
+        exp_sim_H = torch.exp(torch.clamp(sf_sim_qq * mask_H, max=30.0))
         ID_sim_HH = torch.matmul(Y.T, torch.matmul(exp_sim_H, Y)) # (N_id, N_id)
         
         pos_mask_id = torch.eye(self.N_id).to(self._device)
@@ -72,7 +77,8 @@ class AdaSPLoss(object):
         
         both_sim = l_sim * wt_l + s_sim * (1 - wt_l)
         
-        adaptive_pos = torch.diag(torch.exp(both_sim))
+        # Clamp truoc exp de chan inf lam hong adaptive_sim_mat -> nan.
+        adaptive_pos = torch.diag(torch.exp(torch.clamp(both_sim, max=30.0)))
         adaptive_sim_mat = adaptive_pos * pos_mask_id + ID_sim_HE * (1 - pos_mask_id)
         adaptive_sim_mat_L1 = nn.functional.normalize(adaptive_sim_mat, p=1, dim=1)
 
