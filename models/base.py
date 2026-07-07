@@ -195,13 +195,40 @@ class BaseLearner(object):
 
     def _eval_nme(self, loader, class_means):
         self._network.eval()
-        vectors, y_true = self._extract_vectors(loader)
-        vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+        y_pred, y_true = [], []
+        
+        # Process in batches to avoid OOM on Kaggle with huge test sets (> 14M samples)
+        with torch.no_grad():
+            for _, _inputs, _targets in loader:
+                _targets = _targets.numpy()
+                inputs = _inputs.to(self._device)
+                
+                if isinstance(self._network, nn.DataParallel):
+                    _vectors = tensor2numpy(self._network.module.extract_vector(inputs))
+                else:
+                    _vectors = tensor2numpy(self._network.extract_vector(inputs))
+                
+                # Normalize batch vectors [batch_size, feature_dim]
+                norms = np.linalg.norm(_vectors, axis=1, keepdims=True) + EPSILON
+                _vectors = _vectors / norms
+                
+                # Compute distance for this batch only [nb_classes, batch_size]
+                dists = cdist(class_means, _vectors, "sqeuclidean")
+                scores = dists.T  # [batch_size, nb_classes]
+                
+                # Get topk predictions
+                preds = np.argsort(scores, axis=1)[:, : self.topk]
+                
+                y_pred.append(preds)
+                y_true.append(_targets)
 
-        dists = cdist(class_means, vectors, "sqeuclidean")  # [nb_classes, N]
-        scores = dists.T  # [N, nb_classes], choose the one with the smallest distance
+        if len(y_pred) == 0:
+            return np.array([]), np.array([]), None
+            
+        y_pred = np.concatenate(y_pred)
+        y_true = np.concatenate(y_true)
 
-        return np.argsort(scores, axis=1)[:, : self.topk], y_true, None  # [N, topk]
+        return y_pred, y_true, None
 
     def _extract_vectors(self, loader):
         self._network.eval()
@@ -247,46 +274,47 @@ class BaseLearner(object):
                 else dt
             )
 
-            # Exemplar mean
-            idx_dataset = data_manager.get_dataset(
-                [], source="train", mode="test", appendent=(dd, dt)
-            )
-            idx_loader = DataLoader(
-                idx_dataset, batch_size=batch_size, shuffle=False, num_workers=0
-            )
-            vectors, _ = self._extract_vectors(idx_loader)
-            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
-            mean = np.mean(vectors, axis=0)
-            mean = mean / np.linalg.norm(mean)
-
-            self._class_means[class_idx, :] = mean
+            # Fast Exemplar mean computation (Bypass DataLoader completely)
+            self._network.eval()
+            with torch.no_grad():
+                bz = self.args.get("batch_size", 512)
+                vectors_list = []
+                for i in range(0, len(dd), bz):
+                    batch_x = torch.tensor(dd[i:i+bz], dtype=torch.float32).to(self._device)
+                    if isinstance(self._network, nn.DataParallel):
+                        v = self._network.module.extract_vector(batch_x)
+                    else:
+                        v = self._network.extract_vector(batch_x)
+                    vectors_list.append(v.cpu().numpy())
+                
+                vectors = np.concatenate(vectors_list, axis=0)
+                vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+                mean = np.mean(vectors, axis=0)
+                mean = mean / np.linalg.norm(mean)
+                self._class_means[class_idx, :] = mean
 
     def _construct_exemplar(self, data_manager, m):
         logging.info("Constructing exemplars...({} per classes)".format(m))
         for class_idx in range(self._known_classes, self._total_classes):
-            data, targets, idx_dataset = data_manager.get_dataset(
-                np.arange(class_idx, class_idx + 1),
-                source="train",
-                mode="test",
-                ret_data=True,
-            )
-            num_samples = len(data)
-            # Cache so mau cua lop de _reduce_exemplar dung lai o cac task sau.
+            # Fast index retrieval
+            idxes = np.where(data_manager._train_targets == class_idx)[0]
+            num_samples = len(idxes)
             self._class_sample_counts[class_idx] = num_samples
+            
             if self._memory_percent is not None:
                 m_c = max(1, int(round(num_samples * self._memory_percent)))
             else:
                 m_c = m
             selected_m = min(m_c, num_samples)
-            # (Random 1%) Chon ngau nhien selected_m mau cho moi lop thay cho herding.
-            # Nhanh hon rat nhieu tren du lieu lon: KHONG trich vector toan bo lop
-            # va KHONG co vong lap O(m*N) cua herding. Ket qua khac herding nhung
-            # tuong duong ve chat luong o muc replay 1%.
-            data_arr = np.asarray(data)
+            
             rng = np.random.default_rng(int(self.args.get("seed", 0)) + int(class_idx))
             chosen = rng.choice(num_samples, size=selected_m, replace=False)
-            selected_exemplars = data_arr[chosen]
+            
+            # Extract chosen samples directly
+            selected_indices = idxes[chosen]
+            selected_exemplars = data_manager._train_data[selected_indices]
             exemplar_targets = np.full(selected_m, class_idx)
+            
             self._data_memory = (
                 np.concatenate((self._data_memory, selected_exemplars))
                 if len(self._data_memory) != 0
@@ -298,22 +326,24 @@ class BaseLearner(object):
                 else exemplar_targets
             )
 
-            # Exemplar mean
-            idx_dataset = data_manager.get_dataset(
-                [],
-                source="train",
-                mode="test",
-                appendent=(selected_exemplars, exemplar_targets),
-            )
-            idx_loader = DataLoader(
-                idx_dataset, batch_size=batch_size, shuffle=False, num_workers=0
-            )
-            vectors, _ = self._extract_vectors(idx_loader)
-            vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
-            mean = np.mean(vectors, axis=0)
-            mean = mean / np.linalg.norm(mean)
-
-            self._class_means[class_idx, :] = mean
+            # Fast Exemplar mean computation (Bypass DataLoader completely)
+            self._network.eval()
+            with torch.no_grad():
+                bz = self.args.get("batch_size", 512)
+                vectors_list = []
+                for i in range(0, selected_m, bz):
+                    batch_x = torch.tensor(selected_exemplars[i:i+bz], dtype=torch.float32).to(self._device)
+                    if isinstance(self._network, nn.DataParallel):
+                        v = self._network.module.extract_vector(batch_x)
+                    else:
+                        v = self._network.extract_vector(batch_x)
+                    vectors_list.append(v.cpu().numpy())
+                
+                vectors = np.concatenate(vectors_list, axis=0)
+                vectors = (vectors.T / (np.linalg.norm(vectors.T, axis=0) + EPSILON)).T
+                mean = np.mean(vectors, axis=0)
+                mean = mean / np.linalg.norm(mean)
+                self._class_means[class_idx, :] = mean
 
     def _construct_exemplar_unified(self, data_manager, m):
         logging.info(
